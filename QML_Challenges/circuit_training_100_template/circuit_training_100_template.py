@@ -30,12 +30,54 @@ def optimize_circuit(params):
     # QHACK #
 
     # Initialize the device
-    # dev = ...
+    dev = qml.device("default.qubit", wires=WIRES)
 
     # Instantiate the QNode
-    # circuit = qml.QNode(variational_circuit, dev)
+    circuit = qml.QNode(variational_circuit, dev)
 
     # Minimize the circuit
+    def parameter_shift_term(circuit, params, i, shift):
+        shifted = params.copy()
+        shifted[i] += shift
+        forward = circuit(shifted)
+
+        shifted = params.copy()
+        shifted[i] -= shift
+        backward = circuit(shifted)
+
+        return (forward - backward) / (2 * np.sin(shift))
+
+    def comp_gradient(circuit, params):
+        gradient = np.zeros([len(params)], dtype=np.float64)
+        for i in range(len(params)):
+            gradient[i] = parameter_shift_term(circuit, params, i, 2)
+        return gradient
+
+    dcircuit = qml.grad(circuit)
+    # gradients = dcircuit(params)
+    # print(gradients)
+    # gradients = comp_gradient(circuit, params)
+    # print(gradients)
+
+    step_size = 0.1
+    for i in range(200):
+        gradients = dcircuit(params)[0]
+        # gradients = comp_gradient(circuit, params)
+        params -= step_size * gradients
+        optimal_value = circuit(params)
+        print('Iterations:', i, 'Optimal value:', optimal_value, end="\r")
+    print('')
+    # step_size = 0.5
+    # for i in range(25):
+    #     gradients = comp_gradient(circuit, params)
+    #     params -= step_size * gradients
+    #     optimal_value = circuit(params)
+    #
+    # step_size = 0.1
+    # for i in range(25):
+    #     gradients = comp_gradient(circuit, params)
+    #     params -= step_size*gradients
+    #     optimal_value = circuit(params)
 
     # QHACK #
 

@@ -47,6 +47,78 @@ def gradient_200(weights, dev):
 
     # QHACK #
 
+    def compute_gradient(circuit, params, gradient, hessian):
+
+        def parameter_shift_term(circuit, params, i, shift):
+
+            shifted = params.copy()
+            shifted[i] += shift
+            forward = circuit(shifted)
+
+            shifted = params.copy()
+            shifted[i] -= shift
+            backward = circuit(shifted)
+
+            return (forward - backward)/(2*np.sin(shift)), forward
+
+        def parameter_shift_pre(circuit, params, gradient, hessian):
+
+            lst_forward = []
+            wi = circuit(params)
+            for i in range(len(params)):
+                gradient[i], y = parameter_shift_term(circuit, params, i, 4)
+                lst_forward.append(y)
+
+            for i in range(len(gradient)):
+                for j in range(len(gradient)):
+                    # parapara = params.copy()
+                    # parapara[i] = gradient[i]
+                    # parapara[j] = gradient[j]
+                    # hessian[i, j] = parameter_shift_term(circuit, parapara, j)
+
+                    if j > i:
+                        parapara = params.copy()
+                        parapara[j] += 2
+                        forward,y = parameter_shift_term(circuit, parapara, i, 2)
+
+                        parapara = params.copy()
+                        parapara[j] -= 2
+                        backward,y = parameter_shift_term(circuit, parapara, i, 2)
+
+                        hessian[i, j] = (forward - backward) / (2 * np.sin(2))
+
+                    elif j == i:
+                        parapara = params.copy()
+
+                        forward = (lst_forward[i] - wi) / (2 * np.sin(2))
+
+                        backward = (lst_forward[i] - wi) / (2 * np.sin(2))
+
+                        hessian[i, j] = (forward + backward) / (2 * np.sin(2))
+                    else:
+                        hessian[i, j] = hessian[j, i]
+
+                print(hessian)
+
+            # for i in range(len(params)):
+            #
+            #     parapara = params.copy()
+            #     temp = params.copy()
+            #     parapara[i] = gradient[i]
+            #
+            #     for k in parapara:
+            #         temp[k] = parameter_shift_term(circuit, parapara, k)
+            #     print(parapara)
+            #     print(temp)
+            #     for j in range(len(temp)):
+            #         hessian[i,j] = temp[j]
+
+            return gradient, hessian
+
+        return  parameter_shift_pre(circuit, params, gradient, hessian)
+
+
+    gradient, hessian = compute_gradient(circuit, weights, gradient, hessian)
     # QHACK #
 
     return gradient, hessian, circuit.diff_options["method"]

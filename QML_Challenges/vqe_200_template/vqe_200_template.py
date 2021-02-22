@@ -21,6 +21,34 @@ def variational_ansatz(params, wires):
     """
 
     # QHACK #
+    # print('Wires:', wires, len(wires))
+    # print('Params:', len(params) )
+    # exit()
+    # How many layers and roatations do we need?
+    # n_layers = n_rotations // num_qubits ?
+    for layer in range(1):
+        # qml.broadcast(qml.Hadamard, wires, pattern='single')
+        qml.broadcast(qml.Rot, wires, pattern='single', parameters=params)
+        # qml.Hadamard(wires=[0])
+        qml.broadcast(qml.CZ, wires, pattern="pyramid")
+        # layer_params = params[layer*(2*len(wires)):(layer+1)*(2*len(wires))]
+        # qml.broadcast(qml.Rot, wires, pattern="single", parameters=layer_params[:len(wires)])
+        #
+        # qml.Hadamard(wires=[0])
+        #
+        #
+        # rotpattern = []
+        # for i in range(1, len(wires)):
+        #     rotpattern.append([0,i])
+        #
+        #
+        # # qml.broadcast(qml.CNOT, wires, pattern="chain")
+        # #
+        # # rotpattern.reverse()
+        #
+        # qml.broadcast(qml.CNOT, wires, pattern=rotpattern)
+        #
+        # qml.broadcast(qml.Rot, wires, pattern="single", parameters=layer_params[len(wires):])
 
     # QHACK #
 
@@ -41,15 +69,49 @@ def run_vqe(H):
 
     # QHACK #
 
+    np.random.seed(1729)
+
     # Initialize the quantum device
 
+    dev = qml.device('default.qubit', analytic=True, wires=range(len(H.coeffs)))
+
+    # print(len(H.wires))
+    # print(len(H.coeffs))
+    # exit()
     # Randomly choose initial parameters (how many do you need?)
+    # num_qubits = len(H.wires)
+    num_qubits = len(H.coeffs)
+    params = np.random.uniform(low=-np.pi / 2, high=np.pi / 2, size=(num_qubits, 3))
+    print(params)
 
     # Set up a cost function
 
+    cost_fn = qml.ExpvalCost(variational_ansatz, H, dev)
+
     # Set up an optimizer
 
+    # opt = qml.QNGOptimizer(stepsize=0.1, lam=1e-6, diag_approx=False)
+    # qngd_param_history = [params]
+    # qngd_cost_history = []
+
+    opt = qml.AdagradOptimizer(stepsize=0.3)
+
+    max_iterations = 300
+    conv_tol = 1e-6
+
     # Run the VQE by iterating over many steps of the optimizer
+
+    for n in range(max_iterations):
+        # Take step
+        params, prev_energy = opt.step_and_cost(cost_fn, params)
+        energy = cost_fn(params)
+        conv = np.abs(energy - prev_energy)
+
+        if n % 20 == 0:
+            print('Iteration = {:},  Energy = {:.8f} Ha'.format(n, energy))
+
+        if conv <= conv_tol:
+            break
 
     # QHACK #
 

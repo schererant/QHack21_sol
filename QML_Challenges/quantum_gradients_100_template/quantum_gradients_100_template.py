@@ -33,12 +33,35 @@ def parameter_shift(weights):
             qml.CNOT(wires=[1, 2])
             qml.CNOT(wires=[2, 0])
 
-        return qml.expval(qml.PauliY(0) @ qml.PauliZ(2))
+        return qml.expval(qml.PauliY(wires=0) @ qml.PauliZ(wires=2))
 
     gradient = np.zeros_like(weights)
 
     # QHACK #
-    #
+
+    def parameter_shift_term(circuit, params, i, j):
+
+        shifted = params.copy()
+        shifted[i, j] += 3
+        forward = circuit(shifted)  # forward evaluation
+        print(forward)
+
+        shifted = params.copy()
+        shifted[i, j] -= 3
+        backward = circuit(shifted)  # backward evaluation
+
+        return (forward - backward)/(2*np.sin(3))
+
+    def parameter_shift_pre(circuit, params):
+        # gradients = np.zeros([len(params)], (3,3))
+        for i in range(params.shape[0]):
+            for j in range(params.shape[1]):
+                gradient[i, j] = parameter_shift_term(circuit, params, i, j)
+
+        return gradient
+
+    gradient = parameter_shift_pre(circuit, weights)
+
     # QHACK #
 
     return gradient
