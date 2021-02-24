@@ -2,6 +2,10 @@
 import sys
 import pennylane as qml
 from pennylane import numpy as np
+import remote_cirq
+
+API_KEY = ""
+sim = remote_cirq.RemoteSimulator(API_KEY)
 
 # DO NOT MODIFY any of these parameters
 WIRES = 2
@@ -9,7 +13,7 @@ LAYERS = 5
 NUM_PARAMETERS = LAYERS * WIRES * 3
 
 
-def optimize_circuit(params):
+def optimize_circuit(params, floq=False):
     """Minimize the variational circuit and return its minimum value.
 
     The code you write for this challenge should be completely contained within this function
@@ -30,11 +34,20 @@ def optimize_circuit(params):
     # QHACK #
 
     # Initialize the device
-    dev = qml.device("default.qubit", wires=WIRES)
+    if floq:
+        dev = qml.device("cirq.simulator",
+                         wires=WIRES,
+                         simulator=sim,
+                         analytic=False)
 
-    # Instantiate the QNode
+    else:
+        # Instantiate the QNode
+        dev = qml.device("default.qubit", wires=WIRES)
+
+
+    # Use TPU's
+
     circuit = qml.QNode(variational_circuit, dev)
-
     # Minimize the circuit
     def parameter_shift_term(circuit, params, i, shift):
         shifted = params.copy()
@@ -53,7 +66,7 @@ def optimize_circuit(params):
             gradient[i] = parameter_shift_term(circuit, params, i, 2)
         return gradient
 
-    dcircuit = qml.grad(circuit)
+    # dcircuit = qml.grad(circuit)
     # gradients = dcircuit(params)
     # print(gradients)
     # gradients = comp_gradient(circuit, params)
@@ -61,8 +74,8 @@ def optimize_circuit(params):
 
     step_size = 0.1
     for i in range(200):
-        gradients = dcircuit(params)[0]
-        # gradients = comp_gradient(circuit, params)
+        # gradients = dcircuit(params)[0]
+        gradients = comp_gradient(circuit, params)
         params -= step_size * gradients
         optimal_value = circuit(params)
         print('Iterations:', i, 'Optimal value:', optimal_value, end="\r")
