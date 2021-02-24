@@ -79,7 +79,7 @@ def optimize_circuit(params, floq=False):
         params -= step_size * gradients
         optimal_value = circuit(params)
         print('Iterations:', i, 'Optimal value:', optimal_value, end="\r")
-    print('')
+    # print('')
     # step_size = 0.5
     # for i in range(25):
     #     gradients = comp_gradient(circuit, params)
