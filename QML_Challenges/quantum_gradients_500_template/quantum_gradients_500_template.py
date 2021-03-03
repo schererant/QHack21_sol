@@ -33,6 +33,57 @@ def natural_gradient(params):
 
     # QHACK #
 
+    # Get gradients
+    s_param_g = 6
+
+    def calc_gradient(circuit, params):
+        unit_v = np.zeros_like(params)
+        gradient_ = np.zeros_like(params)
+        add_calc = np.zeros_like(params)
+        substr_cal = np.zeros_like(params)
+        for ii in np.ndenumerate(unit_v):
+            ii = ii[0]
+            unit_v[ii] = 1
+            add_calc[ii] = circuit(params + s_param_g * unit_v)
+            substr_cal[ii] = circuit(params - s_param_g * unit_v)
+            gradient_[ii] = (add_calc[ii] - substr_cal[ii]) / (2 * np.sin(s_param_g))
+            unit_v[ii] = 0
+        return gradient_
+
+    gradient = calc_gradient(qnode, params)
+
+    # Get FS Metric
+    def fs_metric(circuit, params):
+        F_array = np.zeros((len(params), len(params)))
+        base_state = circuit(params)
+        unit_1 = np.zeros_like(params)
+        unit_2 = np.zeros_like(params)
+
+        def fubini_help(added_units):
+            return np.power(np.abs((base_state.conjugate() @ circuit(params + (added_units) * (math.pi / 2)))), 2)
+
+        for ii in range(len(params)):
+            for jj in range(len(params)):
+                unit_1[ii] = 1
+                unit_2[jj] = 1
+                first = -fubini_help(unit_1 + unit_2)
+                second = fubini_help(unit_1 - unit_2)
+                third = fubini_help(-unit_1 + unit_2)
+                fourth = -fubini_help(-unit_1 - unit_2)
+                unit_1[ii] = 0
+                unit_2[jj] = 0
+                F_array[ii, jj] = (first + second + third + fourth) / 8
+        return F_array
+
+    F_array = fs_metric(qnode_state, params)
+
+    # Combine to get natural gradient definition
+
+    def nat_grad(F_array, gradient):
+        F_array_inv = np.linalg.inv(F_array)
+        return F_array_inv @ gradient
+
+    natural_grad = nat_grad(F_array, gradient)
     # QHACK #
 
     return natural_grad
